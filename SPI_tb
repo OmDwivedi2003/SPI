@@ -1,0 +1,77 @@
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Testbench for SPI Top Module
+// - Generates clock
+// - Applies reset
+// - Triggers SPI transfer
+// - Checks received data
+//////////////////////////////////////////////////////////////////////////////////
+
+module SPI_tb;
+
+    // -------------------------------
+    // Testbench Signals
+    // -------------------------------
+    reg        clk = 0;        // System clock
+    reg        rst = 0;        // Active-high reset
+    reg        tx_enable = 0; // SPI transmit enable
+    wire [7:0] dout;          // Data received from SPI slave
+    wire       done;          // Transfer completion flag
+
+    // -------------------------------
+    // Clock Generation (100 MHz)
+    // -------------------------------
+    always #5 clk = ~clk;
+
+    // -------------------------------
+    // Reset Generation
+    // -------------------------------
+    initial begin
+        rst = 1;
+        repeat (5) @(posedge clk);
+        rst = 0;
+    end
+
+    // -------------------------------
+    // Transmit Enable Pulse
+    // -------------------------------
+    initial begin
+        tx_enable = 0;
+        repeat (5) @(posedge clk);
+        tx_enable = 1;           // Start SPI transfer
+        @(posedge clk);
+        tx_enable = 0;           // Deassert enable
+    end
+
+    // -------------------------------
+    // DUT Instantiation
+    // -------------------------------
+    SPI_Top dut (
+        .clk(clk),
+        .rst(rst),
+        .tx_enable(tx_enable),
+        .dout(dout),
+        .done(done)
+    );
+
+    // -------------------------------
+    // Result Checking Logic
+    // -------------------------------
+    always @(posedge clk) begin
+        if (done) begin
+            if (dout == 8'hAA)
+                $display("PASS: SPI data received = %h", dout);
+            else
+                $display("FAIL: SPI data received = %h", dout);
+        end
+    end
+
+    // -------------------------------
+    // End Simulation
+    // -------------------------------
+    initial begin
+        #2000;
+        $finish;
+    end
+
+endmodule
