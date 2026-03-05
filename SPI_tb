@@ -1,77 +1,131 @@
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
-// Testbench for SPI Top Module
-// - Generates clock
-// - Applies reset
-// - Triggers SPI transfer
-// - Checks received data
+// Company: 
+// Engineer: 
+// 
+// Create Date: 05.03.2026 16:25:06
+// Design Name: 
+// Module Name: tb_SPI_M
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+
+//////////////////////////////////////////////////////////////////////////////////
+// Testbench for SPI communication
+// This testbench drives the SPI_Top module and verifies
+// full duplex communication between SPI master and slave.
 //////////////////////////////////////////////////////////////////////////////////
 
 module SPI_tb;
 
-    // -------------------------------
-    // Testbench Signals
-    // -------------------------------
-    reg        clk = 0;        // System clock
-    reg        rst = 0;        // Active-high reset
-    reg        tx_enable = 0; // SPI transmit enable
-    wire [7:0] dout;          // Data received from SPI slave
-    wire       done;          // Transfer completion flag
+// ------------------------------------------------------------------
+// Testbench input signals (driven by the testbench)
+// ------------------------------------------------------------------
+reg clk;            // System clock
+reg rst;            // Reset signal
+reg tx_enable;      // Signal used to start SPI transfer
 
-    // -------------------------------
-    // Clock Generation (100 MHz)
-    // -------------------------------
-    always #5 clk = ~clk;
+reg [7:0] master_tx; // Data that master will transmit
+reg [7:0] slave_tx;  // Data that slave will transmit
 
-    // -------------------------------
-    // Reset Generation
-    // -------------------------------
-    initial begin
-        rst = 1;
-        repeat (5) @(posedge clk);
-        rst = 0;
-    end
 
-    // -------------------------------
-    // Transmit Enable Pulse
-    // -------------------------------
-    initial begin
-        tx_enable = 0;
-        repeat (5) @(posedge clk);
-        tx_enable = 1;           // Start SPI transfer
-        @(posedge clk);
-        tx_enable = 0;           // Deassert enable
-    end
+// ------------------------------------------------------------------
+// Output signals from the DUT
+// ------------------------------------------------------------------
+wire [7:0] slave_rx;   // Data received by slave from master
+wire [7:0] master_rx;  // Data received by master from slave
+wire done;             // Indicates SPI transfer completion
 
-    // -------------------------------
-    // DUT Instantiation
-    // -------------------------------
-    SPI_Top dut (
-        .clk(clk),
-        .rst(rst),
-        .tx_enable(tx_enable),
-        .dout(dout),
-        .done(done)
-    );
 
-    // -------------------------------
-    // Result Checking Logic
-    // -------------------------------
-    always @(posedge clk) begin
-        if (done) begin
-            if (dout == 8'hAA)
-                $display("PASS: SPI data received = %h", dout);
-            else
-                $display("FAIL: SPI data received = %h", dout);
-        end
-    end
+// ------------------------------------------------------------------
+// DUT Instantiation
+// Connecting SPI_Top module with testbench signals
+// ------------------------------------------------------------------
+SPI_Top DUT(
 
-    // -------------------------------
-    // End Simulation
-    // -------------------------------
-    initial begin
-        #2000;
-        $finish;
-    end
+    .clk(clk),            // System clock
+    .rst(rst),            // Reset signal
+    .tx_enable(tx_enable),// Start SPI transfer
+
+    .master_tx(master_tx),// Data sent by master
+    .slave_tx(slave_tx),  // Data sent by slave
+
+    .slave_rx(slave_rx),  // Data received by slave
+    .master_rx(master_rx),// Data received by master
+    .done(done)           // Transfer completion flag
+);
+
+
+// ------------------------------------------------------------------
+// Clock generation
+// Creates a 100 MHz clock (10 ns period)
+// ------------------------------------------------------------------
+always #5 clk = ~clk;
+
+
+// ------------------------------------------------------------------
+// Stimulus block
+// Initializes signals and starts SPI transaction
+// ------------------------------------------------------------------
+initial
+begin
+
+clk = 0;           // Initialize clock
+rst = 1;           // Apply reset
+tx_enable = 0;     // Disable SPI transfer initially
+
+// Data to be exchanged between master and slave
+master_tx = 8'h49; // Master will send FE
+slave_tx  = 8'hA5; // Slave will send A5
+
+#40
+rst = 0;           // Release reset
+
+#20
+tx_enable = 1;     // Start SPI communication
+
+#10
+tx_enable = 0;     // Disable start signal
+
+end
+
+
+// ------------------------------------------------------------------
+// Display results once transfer completes
+// ------------------------------------------------------------------
+always @(posedge done)
+begin
+
+$display("------------------------------------------------");
+$display("SPI Transfer Completed");
+$display("Master Transmitted = %h", master_tx);
+$monitor("Slave received  = %h", slave_rx);
+$display("Slave Transmitted  = %h", slave_tx);
+
+
+$monitor("Master received = %h", master_rx);
+$display("------------------------------------------------");
+
+end
+
+
+// ------------------------------------------------------------------
+// End simulation after fixed time
+// ------------------------------------------------------------------
+initial
+begin
+#2000
+$finish;
+end
 
 endmodule
